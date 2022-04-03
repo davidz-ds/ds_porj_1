@@ -1,0 +1,41 @@
+import math
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Load Dataframe
+df_sales = pd.read_excel(r'Customer Price File - Updated _ FINAL.xlsx', sheet_name='Cust Inv Trans')
+df_margin = pd.read_excel(r'Customer Price File - Updated _ FINAL.xlsx', sheet_name='Cust Sales Channel Split')
+df_override = pd.read_excel(r'Customer Price File - Updated _ FINAL.xlsx', sheet_name='Override Rules')
+df_cust_pricing = pd.read_excel(r'Customer Price File - Updated _ FINAL.xlsx', sheet_name='Cust Pricing')
+
+# Master & Slave Account
+# Slave account is the account require to be changeed and modified.
+master_acc = 1461867
+slave_acc = 1470089
+
+# Override - Reshape Columns
+column_drop = ["Customer Name","Start Date","Dissection Description","User Added","End Date","Date/Time Added"]
+df_override = df_override.drop(column_drop,1)
+#---------
+#df_override['Price Class 1'] = df_override['Price Class 1'].apply(lambda x: str(x).zfill(2))
+df_override['Price Class 2'] = df_override['Price Class 1'].apply(lambda x: x.zfill(3))
+df_override['PC-SPC'] = df_override['Price Class 1'].astype(str)+"-"+df_override['Price Class 2'].astype(str)
+#df_override.head(1)
+
+
+# Override - Add suffix
+#df_override['Price Class 1'].dtype
+df_mas_overrides = df_override[df_override["Customer Id"]==master_acc]
+df_sla_overrides = df_override[df_override["Customer Id"]==slave_acc]
+#---------
+df_mas_overrides = df_mas_overrides.add_suffix('_MAS_PPs')
+df_sla_overrides = df_sla_overrides.add_suffix('_SLA_PPs')
+
+
+# ---
+df_mas_overrides['var_tmp_MAS_PPs'] = df_mas_overrides['Price Pointer_MAS_PPs'] + df_mas_overrides['Percent Variation_MAS_PPs']
+df_sla_overrides['var_tmp_SLA_PPs'] = df_sla_overrides['Price Pointer_SLA_PPs'] + df_sla_overrides['Percent Variation_SLA_PPs']
+# ---
+df_mas_overrides.drop(['Price Class 1_MAS_PPs','Price Class 2_MAS_PPs'],axis=1,inplace=True)
+df_sla_overrides.drop(['Price Class 1_SLA_PPs','Price Class 2_SLA_PPs'],axis=1,inplace=True)
