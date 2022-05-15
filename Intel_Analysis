@@ -1,0 +1,70 @@
+# Load Library
+import math
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Intel Analysis Dataframe Loading 
+df_intel= pd.read_excel(r'Compititor Example.xlsx', sheet_name='AAA')
+df_pc_rules= pd.read_excel(r'Product Price Rule with PC.xlsx', sheet_name='Page1')
+df_SalesInChannel = pd.read_excel(r'Customer Price File - Updated _ FINAL_2.xlsx', sheet_name='Cust Sales Channel Split')
+
+# Reshape df_SalesInChannel
+df_SalesInChannel = df_SalesInChannel.iloc[2:]
+salesInChannel_header = df_SalesInChannel.iloc[0]
+df_SalesInChannel= df_SalesInChannel[1:]
+df_SalesInChannel.columns = salesInChannel_header
+df_SalesInChannel = df_SalesInChannel.reset_index(drop=True)
+# Reshape df_pc_rules
+df_pc_rules = df_pc_rules.iloc[6:]
+pc_rules_header = df_pc_rules.iloc[0]
+df_pc_rules= df_pc_rules[1:]
+df_pc_rules.columns = pc_rules_header
+df_pc_rules = df_pc_rules.reset_index(drop=True)
+
+## Setup Key Before Merge
+##
+selected_cols = ['PC-SPC','Quantity','Sales','Margin','TM%']
+df_SalesInChannel = df_SalesInChannel[selected_cols]
+## 
+df_intel = df_intel.rename(columns={'part_num':'Part No'})
+
+# prepare dataset for analysis
+df_analysis = pd.merge(df_intel,df_pc_rules,how='left',on='Part No')
+# Calculated Intel Margin
+df_analysis['Intel_Margin'] = (df_analysis['intel_prices']-df_analysis['Base Price'])/df_analysis['intel_prices']
+df_analysis['PC-SPC'] = df_analysis['Price Class 1']+'-'+df_analysis['Price Class 2']
+selected_cols2 = ['PC-SPC','Intel_Margin']
+df_analysis2 = df_analysis[selected_cols2]
+df_analysis2['Intel_Margin'] = df_analysis2['Intel_Margin'].astype('float')
+#
+df_analysis2_pivot = df_analysis2.groupby('PC-SPC')['Intel_Margin'].mean()
+df_analysis2_pivot = pd.DataFrame(df_analysis2_pivot).reset_index()
+#df_analysis2_pivot.head()
+
+
+df_analysis_impact = pd.merge(df_SalesInChannel,df_analysis2_pivot,how='left',on='PC-SPC')
+df_analysis_impact = df_analysis_impact.dropna()
+
+
+df_analysis_impact['Cost'] = df_analysis_impact['Sales']*(1-df_analysis_impact['TM%'])
+df_analysis_impact['New_Sales'] = df_analysis_impact['Cost']/(1-df_analysis_impact['Intel_Margin'])
+df_analysis_impact['New_Margin'] = df_analysis_impact['New_Sales']-df_analysis_impact['Cost']
+df_analysis_impact['Impact_MarginLoss'] = df_analysis_impact['New_Margin']-df_analysis_impact['Margin']
+df_analysis_impact['Recover'] = df_analysis_impact['Impact_MarginLoss']/df_analysis_impact['Intel_Margin']
+
+
+df_plot1 = df_analysis_impact[['PC-SPC','TM%','Intel_Margin']]
+df_plot1 = df_plot1.melt('PC-SPC',var_name='cols',value_name='vals')
+
+
+plt.figure(figsize=(10, 8))
+sns.barplot(x="PC-SPC", 
+            y="vals",
+            #y=["TM%","New_Margin"], 
+            hue="cols", 
+            data=df_plot1)
+plt.ylabel("Mean Salary in US Dollars", size=14)
+plt.xlabel("Education", size=14)
+plt.title("Grouped Barplot: Gender Bias in Salary", size=18)
+plt.savefig("grouped_barplot_Seaborn_barplot_Python.png")
