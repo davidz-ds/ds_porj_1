@@ -57,14 +57,22 @@ df_analysis_impact['Recover'] = df_analysis_impact['Impact_MarginLoss']/df_analy
 df_plot1 = df_analysis_impact[['PC-SPC','TM%','Intel_Margin']]
 df_plot1 = df_plot1.melt('PC-SPC',var_name='cols',value_name='vals')
 
-
+# Version 22 May 22
+# Plot
 plt.figure(figsize=(10, 8))
-sns.barplot(x="PC-SPC", 
+splot = sns.barplot(x="PC-SPC", 
             y="vals",
             #y=["TM%","New_Margin"], 
             hue="cols", 
             data=df_plot1)
-plt.ylabel("Mean Salary in US Dollars", size=14)
-plt.xlabel("Education", size=14)
-plt.title("Grouped Barplot: Gender Bias in Salary", size=18)
-plt.savefig("grouped_barplot_Seaborn_barplot_Python.png")
+plt.ylabel("xxx", size=14)
+plt.xlabel("xxx", size=14)
+plt.title("xxx", size=18)
+for p in splot.patches:
+    splot.annotate(format(p.get_height(), '.4f'), 
+                   (p.get_x() + p.get_width() / 2., p.get_height()), 
+                   ha = 'center', va = 'center', 
+                   size=8,
+                   xytext = (0, -12), 
+                   textcoords = 'offset points')
+#plt.savefig("grouped_barplot_Seaborn_barplot_Python.png")
