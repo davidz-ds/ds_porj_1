@@ -5,9 +5,9 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 # Intel Analysis Dataframe Loading 
-df_intel= pd.read_excel(r'Compititor Example.xlsx', sheet_name='AAA')
+df_Intel= pd.read_excel(r'Competitor Example.xlsx', sheet_name='workfile')
 df_pc_rules= pd.read_excel(r'Product Price Rule with PC.xlsx', sheet_name='Page1')
-df_SalesInChannel = pd.read_excel(r'Customer Price File - Updated _ FINAL_2.xlsx', sheet_name='Cust Sales Channel Split')
+df_SalesInChannel = pd.read_excel(r'Customer Price File - Updated _ FINAL.xlsx', sheet_name='Cust Sales Channel Split')
 
 # Reshape df_SalesInChannel
 df_SalesInChannel = df_SalesInChannel.iloc[2:]
@@ -15,6 +15,11 @@ salesInChannel_header = df_SalesInChannel.iloc[0]
 df_SalesInChannel= df_SalesInChannel[1:]
 df_SalesInChannel.columns = salesInChannel_header
 df_SalesInChannel = df_SalesInChannel.reset_index(drop=True)
+## Setup Key Before Merge
+##
+selected_cols = ['PC-SPC','Quantity','Sales','Margin','TM%']
+df_SalesInChannel = df_SalesInChannel[selected_cols]
+
 # Reshape df_pc_rules
 df_pc_rules = df_pc_rules.iloc[6:]
 pc_rules_header = df_pc_rules.iloc[0]
@@ -22,52 +27,51 @@ df_pc_rules= df_pc_rules[1:]
 df_pc_rules.columns = pc_rules_header
 df_pc_rules = df_pc_rules.reset_index(drop=True)
 
-## Setup Key Before Merge
-##
-selected_cols = ['PC-SPC','Quantity','Sales','Margin','TM%']
-df_SalesInChannel = df_SalesInChannel[selected_cols]
-## 
-df_intel = df_intel.rename(columns={'part_num':'Part No'})
+## Reshape df_Intel
+df_Intel = df_Intel.rename(columns={'Part_Num':'Part No'})
+
+df_SalesInChannel.head(3)
+df_pc_rules.head(10)
+df_Intel.head(10)
 
 # prepare dataset for analysis
-df_analysis = pd.merge(df_intel,df_pc_rules,how='left',on='Part No')
+df_analysis = pd.merge(df_Intel,df_pc_rules,how='left',on='Part No')
 # Calculated Intel Margin
-df_analysis['Intel_Margin'] = (df_analysis['intel_prices']-df_analysis['Base Price'])/df_analysis['intel_prices']
+df_analysis['Intel_Margin'] = (df_analysis['Intel_Price']-df_analysis['Base Price'])/df_analysis['Intel_Price']
+df_analysis['Repco_Margin'] = (df_analysis['Repco_Price']-df_analysis['Base Price'])/df_analysis['Repco_Price']
 df_analysis['PC-SPC'] = df_analysis['Price Class 1']+'-'+df_analysis['Price Class 2']
-selected_cols2 = ['PC-SPC','Intel_Margin']
+# Cut the Columns
+selected_cols2 = ['Part No','PC-SPC','Intel_Margin','Repco_Margin']
 df_analysis2 = df_analysis[selected_cols2]
 df_analysis2['Intel_Margin'] = df_analysis2['Intel_Margin'].astype('float')
+df_analysis2['Repco_Margin'] = df_analysis2['Repco_Margin'].astype('float')
+df_analysis2['TM%_Diff'] =  df_analysis2['Intel_Margin'] - df_analysis2['Repco_Margin']
+
+#df_analysis2.head(15)
+output_display1 = df_analysis2.to_string(formatters={
+    'Intel_Margin': '{:,.2%}'.format,
+    'Repco_Margin': '{:,.2%}'.format,
+    'TM%_Diff': '{:,.2%}'.format
+})
+print(output_display1)
+
 #
-df_analysis2_pivot = df_analysis2.groupby('PC-SPC')['Intel_Margin'].mean()
+df_analysis2_pivot = df_analysis2.groupby('PC-SPC')['Intel_Margin','Repco_Margin'].mean()
 df_analysis2_pivot = pd.DataFrame(df_analysis2_pivot).reset_index()
-#df_analysis2_pivot.head()
+df_analysis2_pivot.head()
 
+df_plot1 = df_analysis2[['PC-SPC','Repco_Margin','Intel_Margin']]
+df_plot1 = df_plot1.melt('PC-SPC',var_name='TM%',value_name='vals')
 
-df_analysis_impact = pd.merge(df_SalesInChannel,df_analysis2_pivot,how='left',on='PC-SPC')
-df_analysis_impact = df_analysis_impact.dropna()
-
-
-df_analysis_impact['Cost'] = df_analysis_impact['Sales']*(1-df_analysis_impact['TM%'])
-df_analysis_impact['New_Sales'] = df_analysis_impact['Cost']/(1-df_analysis_impact['Intel_Margin'])
-df_analysis_impact['New_Margin'] = df_analysis_impact['New_Sales']-df_analysis_impact['Cost']
-df_analysis_impact['Impact_MarginLoss'] = df_analysis_impact['New_Margin']-df_analysis_impact['Margin']
-df_analysis_impact['Recover'] = df_analysis_impact['Impact_MarginLoss']/df_analysis_impact['Intel_Margin']
-
-
-df_plot1 = df_analysis_impact[['PC-SPC','TM%','Intel_Margin']]
-df_plot1 = df_plot1.melt('PC-SPC',var_name='cols',value_name='vals')
-
-# Version 22 May 22
-# Plot
-plt.figure(figsize=(10, 8))
+plt.figure(figsize=(8, 6))
 splot = sns.barplot(x="PC-SPC", 
             y="vals",
             #y=["TM%","New_Margin"], 
-            hue="cols", 
+            hue="TM%", 
             data=df_plot1)
-plt.ylabel("xxx", size=14)
-plt.xlabel("xxx", size=14)
-plt.title("xxx", size=18)
+plt.ylabel("Trade Margin", size=16)
+plt.xlabel("Price Class", size=14)
+plt.title("Repco vs Competitor Margin", size=18)
 for p in splot.patches:
     splot.annotate(format(p.get_height(), '.4f'), 
                    (p.get_x() + p.get_width() / 2., p.get_height()), 
@@ -75,4 +79,21 @@ for p in splot.patches:
                    size=8,
                    xytext = (0, -12), 
                    textcoords = 'offset points')
-#plt.savefig("grouped_barplot_Seaborn_barplot_Python.png")
+                   
+df_analysis_impact = pd.merge(df_SalesInChannel,df_analysis2_pivot,how='left',on='PC-SPC')
+df_analysis_impact = df_analysis_impact.dropna()
+df_analysis_impact.head(10)
+
+df_analysis_impact['Cost'] = df_analysis_impact['Sales']*(1-df_analysis_impact['TM%'])
+df_analysis_impact['New_Sales'] = df_analysis_impact['Cost']/(1-df_analysis_impact['Intel_Margin'])
+df_analysis_impact['New_Margin'] = df_analysis_impact['New_Sales']-df_analysis_impact['Cost']
+df_analysis_impact['Impact_Margin_Loss'] = df_analysis_impact['New_Margin']-df_analysis_impact['Margin']
+df_analysis_impact['Recover'] = df_analysis_impact['Impact_Margin_Loss']/df_analysis_impact['Intel_Margin']*-1
+
+df_analysis_impact.head(10)
+
+impact = str(round(df_analysis_impact['Impact_Margin_Loss'].sum(),2))
+recover = str(round(df_analysis_impact['Recover'].sum(),2))
+
+print("The Margin Loss if apply with Intel margin is "+ impact)
+print("Additional Sales: " +recover)
