@@ -34,14 +34,46 @@ df_SalesInChannel.head(3)
 df_pc_rules.head(10)
 df_Intel.head(10)
 
+# function define
+def price_pointer(y,x1,x2,x3,x4):
+    if y<x1:
+        return 1
+    elif y>x1 and y <x2:
+        return 2
+    elif y>x2 and y<x3:
+        return 3
+    elif y>x3 and y<x4:
+        return 4
+    else:
+        return None
+def pps_var(y,x1,x2,x3,x4):
+    if y<x1:
+        return -((x1-y)/x1)
+    elif y>x1 and y <x2:
+        return -(1-((y-x1)/(x2-x1)))
+    elif y>x2 and y<x3:
+        return -(1-((y-x2)/(x3-x2)))
+    elif y>x3 and y<x4:
+        return -(1-((y-x3)/(x4-x3)))
+    else:
+        return None
+def cp_adj(z):
+    return z/(1-z)
+
 # prepare dataset for analysis
 df_analysis = pd.merge(df_Intel,df_pc_rules,how='left',on='Part No')
 # Calculated Intel Margin
 df_analysis['Intel_Margin'] = (df_analysis['Intel_Price']-df_analysis['Base Price'])/df_analysis['Intel_Price']
 df_analysis['Repco_Margin'] = (df_analysis['Repco_Price']-df_analysis['Base Price'])/df_analysis['Repco_Price']
 df_analysis['PC-SPC'] = df_analysis['Price Class 1']+'-'+df_analysis['Price Class 2']
+
+# Calculated PPs variance% and adjustment%
+df_analysis['Price_Pointer'] = df_analysis.apply(lambda x:price_pointer(x['Intel_Price'],x['PP1 Price'],x['PP2 Price'],x['PP3 Price'],x['PP4 Price']),axis=1)
+df_analysis['variance%'] = df_analysis.apply(lambda x:pps_var(x['Intel_Price'],x['PP1 Price'],x['PP2 Price'],x['PP3 Price'],x['PP4 Price']),axis=1)
+df_analysis['adjustment%'] = df_analysis.apply(lambda x:cp_adj(x['Intel_Margin']),axis=1)
+
 # Cut the Columns
-selected_cols2 = ['Part No','PC-SPC','Intel_Margin','Repco_Margin']
+selected_cols2 = ['Part No','PC-SPC','Intel_Margin','Repco_Margin','Intel_Price','Repco_Price','Price_Pointer','variance%','adjustment%']
 df_analysis2 = df_analysis[selected_cols2]
 df_analysis2['Intel_Margin'] = df_analysis2['Intel_Margin'].astype('float')
 df_analysis2['Repco_Margin'] = df_analysis2['Repco_Margin'].astype('float')
@@ -51,7 +83,9 @@ df_analysis2['TM%_Diff'] =  df_analysis2['Intel_Margin'] - df_analysis2['Repco_M
 output_display1 = df_analysis2.to_string(formatters={
     'Intel_Margin': '{:,.2%}'.format,
     'Repco_Margin': '{:,.2%}'.format,
-    'TM%_Diff': '{:,.2%}'.format
+    'TM%_Diff': '{:,.2%}'.format,
+    'variance%':'{:,.2%}'.format,
+    'adjustment%':'{:,.2%}'.format
 })
 print(output_display1)
 
