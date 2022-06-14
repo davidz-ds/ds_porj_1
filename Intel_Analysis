@@ -29,7 +29,6 @@ df_pc_rules = df_pc_rules.reset_index(drop=True)
 
 ## Reshape df_Intel
 df_Intel = df_Intel.rename(columns={'Part_Num':'Part No'})
-
 df_SalesInChannel.head(3)
 df_pc_rules.head(10)
 df_Intel.head(10)
@@ -79,6 +78,9 @@ df_analysis2['Intel_Margin'] = df_analysis2['Intel_Margin'].astype('float')
 df_analysis2['Repco_Margin'] = df_analysis2['Repco_Margin'].astype('float')
 df_analysis2['TM%_Diff'] =  df_analysis2['Intel_Margin'] - df_analysis2['Repco_Margin']
 
+# Sort by PCSPC
+df_analysis2 = df_analysis2.sort_values('PC-SPC')
+
 #df_analysis2.head(15)
 output_display1 = df_analysis2.to_string(formatters={
     'Intel_Margin': '{:,.2%}'.format,
@@ -88,6 +90,8 @@ output_display1 = df_analysis2.to_string(formatters={
     'adjustment%':'{:,.2%}'.format
 })
 print(output_display1)
+
+df_analysis2.to_csv('res.csv')
 
 #
 df_analysis2_pivot = df_analysis2.groupby('PC-SPC')['Intel_Margin','Repco_Margin'].mean()
@@ -105,7 +109,7 @@ splot = sns.barplot(x="PC-SPC",
             data=df_plot1)
 plt.ylabel("Trade Margin", size=16)
 plt.xlabel("Price Class", size=14)
-plt.title("Repco vs Competitor Margin", size=18)
+plt.title("Repco vs Competitor Margin", size=16)
 for p in splot.patches:
     splot.annotate(format(p.get_height(), '.4f'), 
                    (p.get_x() + p.get_width() / 2., p.get_height()), 
@@ -130,4 +134,5 @@ impact = str(round(df_analysis_impact['Impact_Margin_Loss'].sum(),2))
 recover = str(round(df_analysis_impact['Recover'].sum(),2))
 
 print("The Margin Loss if apply with Intel margin is "+ impact)
+
 print("Additional Sales: " +recover)
